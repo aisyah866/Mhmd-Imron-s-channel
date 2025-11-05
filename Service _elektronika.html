@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DATA LAPORAN SERVICE</title>
+  <style>
+    body{font-family:Inter,system-ui,Arial;margin:0;background:#f7f9fb;color:#111}
+    .container{max-width:960px;margin:0 auto;padding:12px}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    h1{font-size:18px;margin:0}
+    button{background:#0d6efd;color:#fff;border:0;padding:8px 12px;border-radius:6px;cursor:pointer}
+    button.secondary{background:#6c757d}
+    .card{background:#fff;padding:10px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-bottom:10px}
+    input,select,textarea{width:100%;padding:8px;border:1px solid #ddd;border-radius:6px}
+    label{font-size:12px;color:#555}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{border:1px solid #eee;padding:6px;text-align:left}
+    .actions button{margin-right:5px}
+    footer{font-size:12px;color:#777;text-align:center;margin-top:10px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔧 mhmd imron s channel service elektronika </h1>
+      <div>
+        <button id="btnExportCSV">📥 CSV</button>
+        <button id="btnBackup" class="secondary">💾 Backup</button>
+        <input id="fileImport" type="file" accept=".json" style="display:none">
+        <button id="btnImport" class="secondary">📤 Import</button>
+      </div>
+    </header>
+
+    <div class="card">
+      <form id="formService">
+        <label>Nama Pelanggan</label>
+        <input id="nama" required>
+        <label>Kontak</label>
+        <input id="kontak">
+        <label>Barang</label>
+        <input id="barang" required>
+        <label>Kerusakan</label>
+        <input id="kerusakan">
+        <label>Tanggal Masuk</label>
+        <input id="tanggal" type="date">
+        <label>Teknisi</label>
+        <input id="teknisi">
+        <label>Biaya (Rp)</label>
+        <input id="biaya" type="number" min="0" value="0">
+        <label>Status</label>
+        <select id="status">
+          <option>Proses</option>
+          <option>Selesai</option>
+          <option>Diambil</option>
+        </select>
+        <div style="margin-top:10px">
+          <button type="submit">Simpan</button>
+          <button type="button" id="btnReset" class="secondary">Reset</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <input id="q" placeholder="Cari nama / barang..." style="width:100%;padding:8px;border-radius:6px;border:1px solid #ddd;">
+      <div style="margin-top:5px">Total: <span id="total">0</span></div>
+    </div>
+
+    <div class="card">
+      <table id="tbl">
+        <thead>
+          <tr><th>Nama</th><th>Barang</th><th>Biaya</th><th>Status</th><th>Aksi</th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <footer>💡 Data tersimpan otomatis di HP (localStorage). Gunakan Backup JSON agar tidak hilang.</footer>
+  </div>
+
+  <script>
+    const KEY = 'service_hp_v1'
+    let data = JSON.parse(localStorage.getItem(KEY) || '[]')
+    let editId = null
+
+    const form = document.getElementById('formService')
+    const tbody = document.getElementById('tbody')
+    const q = document.getElementById('q')
+    const total = document.getElementById('total')
+    const fileImport = document.getElementById('fileImport')
+
+    function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+    function save(){localStorage.setItem(KEY,JSON.stringify(data))}
+    function render(){
+      const qv = q.value.trim().toLowerCase()
+      tbody.innerHTML = ''
+      const filtered = data.filter(x=>!qv || x.nama.toLowerCase().includes(qv)||x.barang.toLowerCase().includes(qv))
+      filtered.forEach(x=>{
+        const tr = document.createElement('tr')
+        tr.innerHTML = `<td>${x.nama}</td><td>${x.barang}</td><td>Rp ${x.biaya.toLocaleString('id-ID')}</td><td>${x.status}</td>
+        <td><button class="edit" data-id="${x.id}">✏️</button><button class="del secondary" data-id="${x.id}">🗑️</button></td>`
+        tbody.appendChild(tr)
+      })
+      total.textContent = filtered.length
+      document.querySelectorAll('.edit').forEach(b=>b.onclick=()=>editItem(b.dataset.id))
+      document.querySelectorAll('.del').forEach(b=>b.onclick=()=>delItem(b.dataset.id))
+    }
+    function editItem(id){
+      const x=data.find(a=>a.id===id)
+      if(!x)return
+      document.getElementById('nama').value=x.nama
+      document.getElementById('kontak').value=x.kontak
+      document.getElementById('barang').value=x.barang
+      document.getElementById('kerusakan').value=x.kerusakan
+      document.getElementById('tanggal').value=x.tanggal
+      document.getElementById('teknisi').value=x.teknisi
+      document.getElementById('biaya').value=x.biaya
+      document.getElementById('status').value=x.status
+      editId=id
+      window.scrollTo({top:0,behavior:'smooth'})
+    }
+    function delItem(id){
+      if(confirm('Hapus data ini?')){
+        data=data.filter(a=>a.id!==id)
+        save();render()
+      }
+    }
+    form.onsubmit=e=>{
+      e.preventDefault()
+      const item={
+        id:editId||uid(),
+        nama:document.getElementById('nama').value.trim(),
+        kontak:document.getElementById('kontak').value.trim(),
+        barang:document.getElementById('barang').value.trim(),
+        kerusakan:document.getElementById('kerusakan').value.trim(),
+        tanggal:document.getElementById('tanggal').value,
+        teknisi:document.getElementById('teknisi').value.trim(),
+        biaya:parseFloat(document.getElementById('biaya').value)||0,
+        status:document.getElementById('status').value
+      }
+      if(editId){
+        const i=data.findIndex(a=>a.id===editId)
+        if(i>-1)data[i]=item
+      }else data.unshift(item)
+      save();render();form.reset();editId=null
+    }
+    document.getElementById('btnReset').onclick=()=>{form.reset();editId=null}
+    q.oninput=render
+
+    document.getElementById('btnBackup').onclick=()=>{
+      const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'})
+      const a=document.createElement('a')
+      a.href=URL.createObjectURL(blob)
+      a.download='backup_service.json'
+      a.click()
+    }
+    document.getElementById('btnImport').onclick=()=>fileImport.click()
+    fileImport.onchange=e=>{
+      const f=e.target.files[0];if(!f)return
+      const r=new FileReader()
+      r.onload=()=>{
+        try{
+          const arr=JSON.parse(r.result)
+          if(Array.isArray(arr)){data=arr;save();render();alert('Import berhasil')}
+        }catch(err){alert('Gagal import')}
+      }
+      r.readAsText(f)
+    }
+
+    document.getElementById('btnExportCSV').onclick=()=>{
+      if(!data.length){alert('Belum ada data');return}
+      const header=['Nama','Barang','Biaya','Status']
+      const rows=data.map(x=>[x.nama,x.barang,x.biaya,x.status])
+      const csv=[header,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n')
+      const blob=new Blob([csv],{type:'text/csv'})
+      const a=document.createElement('a')
+      a.href=URL.createObjectURL(blob)
+      a.download='service.csv';a.click()
+    }
+
+    if(!document.getElementById('tanggal').value)
+      document.getElementById('tanggal').value=new Date().toISOString().slice(0,10)
+    render()
+  </script>
+</body>
+</html>
